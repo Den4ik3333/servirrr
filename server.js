@@ -1,4 +1,3 @@
-// server.js
 const express = require("express");
 const fs = require("fs");
 const cors = require("cors");
@@ -13,18 +12,25 @@ const USERS_FILE = "./users.json";
 
 // Загрузка пользователей
 function loadUsers() {
-  if (!fs.existsSync(USERS_FILE)) return [];
-  return JSON.parse(fs.readFileSync(USERS_FILE));
+  if (!fs.existsSync(USERS_FILE)) {
+    console.log("Файл users.json не найден. Создаю новый...");
+    return [];
+  }
+  const users = JSON.parse(fs.readFileSync(USERS_FILE));
+  console.log("Загруженные пользователи:", users);
+  return users;
 }
 
 // Сохранение пользователей
 function saveUsers(users) {
   fs.writeFileSync(USERS_FILE, JSON.stringify(users, null, 2));
+  console.log("Данные пользователей сохранены в users.json.");
 }
 
 // Регистрация пользователя
 app.post("/auth", (req, res) => {
   const { id, username, avatar, ref } = req.body;
+  console.log("Получены данные для регистрации:", req.body);
 
   if (!id || !username) {
     return res.status(400).json({ error: "Missing required fields" });
@@ -32,15 +38,18 @@ app.post("/auth", (req, res) => {
 
   const users = loadUsers();
   let user = users.find(u => u.id === id);
+  console.log("Найденный пользователь:", user);
 
   if (!user) {
     user = { id, username, avatar, balance: 0, referrals: [] };
     users.push(user);
+    console.log("Новый пользователь зарегистрирован:", user);
 
     if (ref && ref !== id) {
       const inviter = users.find(u => u.id === ref);
       if (inviter && !inviter.referrals.includes(id)) {
         inviter.referrals.push(id);
+        console.log(`Реферал ${id} добавлен к пользователю ${inviter.username}`);
       }
     }
 
@@ -62,15 +71,19 @@ app.get("/user/:id", (req, res) => {
 // Обновление баланса
 app.post("/update-balance", (req, res) => {
   const { id, delta } = req.body;
+  console.log(`Обновление баланса для пользователя ${id} на ${delta}`);
+
   const users = loadUsers();
   const user = users.find(u => u.id === id);
   if (!user) return res.status(404).json({ error: "User not found" });
 
   user.balance += delta;
+  console.log(`Новый баланс пользователя ${user.username}: ${user.balance}`);
   saveUsers(users);
   res.json({ balance: user.balance });
 });
 
+// Старт сервера
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
 });
