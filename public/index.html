@@ -81,7 +81,7 @@
   </div>
 
   <script>
-    const api = 'https://servirrr.onrender.com'; // замени на свой сервер!
+    const api = 'https://servirrr.onrender.com'; // Замени на свой сервер
     const tg = window.Telegram.WebApp.initDataUnsafe;
     const ref = new URLSearchParams(location.search).get("start");
 
@@ -89,8 +89,12 @@
     let count = 0;
 
     async function register() {
-      if (!userId) return;
-      await fetch(`${api}/auth`, {
+      if (!userId) {
+        console.log("Нет userId, регистрация не будет выполнена.");
+        return;
+      }
+      console.log("Регистрация пользователя...");
+      const res = await fetch(`${api}/auth`, {
         method: 'POST',
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -100,11 +104,15 @@
           ref: ref ? parseInt(ref) : null
         })
       });
+
+      const data = await res.json();
+      console.log("Результат регистрации:", data);
     }
 
     async function tapSnus() {
       count++;
       document.getElementById("count").textContent = count;
+      console.log("Тап снюсинка, обновляем баланс...");
       await fetch(`${api}/update-balance`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -113,12 +121,14 @@
     }
 
     async function showReferrals() {
+      console.log("Отправляем запрос на рефералов...");
       const modal = document.getElementById("refModal");
       const list = document.getElementById("refList");
       list.innerHTML = '';
 
       const res = await fetch(`${api}/user/${userId}`);
       const data = await res.json();
+      console.log("Данные о пользователе:", data);
 
       for (const id of data.referrals || []) {
         const refRes = await fetch(`${api}/user/${id}`);
