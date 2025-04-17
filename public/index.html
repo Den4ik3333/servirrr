@@ -64,36 +64,31 @@
   <div class="shaker" onclick="tapSnus()"></div>
 
   <div class="menu">
-    <button class="btn" onclick="alert('Задания скоро!')">📋 Задания</button>
+    <button class="btn" onclick="alert('Задания скоро!')">📋 ЖОПА</button>
     <button class="btn" onclick="showReferrals()">👥 Рефералы</button>
   </div>
 
-  <!-- Модалка -->
   <div id="refModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:#000a; backdrop-filter:blur(3px); align-items:center; justify-content:center; z-index:999;">
     <div style="background:#1d1d1d; border-radius:20px; padding:20px; width:90%; max-width:400px; color:white;">
       <h2 style="margin-top:0;">👥 Ваши рефералы</h2>
-      <div id="refList" style="max-height:200px; overflow-y:auto; margin-bottom:15px;">
-        <!-- Список рефералов -->
-      </div>
+      <div id="refList" style="max-height:200px; overflow-y:auto; margin-bottom:15px;"></div>
       <button class="btn" onclick="invite()">📨 Пригласить</button>
       <button class="btn" onclick="closeModal()" style="margin-left:10px; background:#333;">Закрыть</button>
     </div>
   </div>
 
   <script>
-    const api = 'https://servirrr.onrender.com'; // Замени на свой сервер
+    window.Telegram.WebApp.ready();
     const tg = window.Telegram.WebApp.initDataUnsafe;
     const ref = new URLSearchParams(location.search).get("start");
 
+    const api = 'https://servirrr.onrender.com';
     const userId = tg?.user?.id;
     let count = 0;
 
     async function register() {
-      if (!userId) {
-        console.log("Нет userId, регистрация не будет выполнена.");
-        return;
-      }
-      console.log("Регистрация пользователя...");
+      if (!userId) return;
+
       const res = await fetch(`${api}/auth`, {
         method: 'POST',
         headers: { "Content-Type": "application/json" },
@@ -101,18 +96,24 @@
           id: userId,
           username: tg.user.username,
           avatar: tg.user.photo_url,
-          ref: ref ? parseInt(ref) : null
+          ref: ref ? String(ref) : null
         })
       });
 
       const data = await res.json();
-      console.log("Результат регистрации:", data);
+      console.log("Зарегистрирован:", data);
+    }
+
+    async function getBalance() {
+      const res = await fetch(`${api}/user/${userId}`);
+      const data = await res.json();
+      count = data.balance ?? 0;
+      document.getElementById("count").textContent = count;
     }
 
     async function tapSnus() {
       count++;
       document.getElementById("count").textContent = count;
-      console.log("Тап снюсинка, обновляем баланс...");
       await fetch(`${api}/update-balance`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -121,14 +122,12 @@
     }
 
     async function showReferrals() {
-      console.log("Отправляем запрос на рефералов...");
       const modal = document.getElementById("refModal");
       const list = document.getElementById("refList");
       list.innerHTML = '';
 
       const res = await fetch(`${api}/user/${userId}`);
       const data = await res.json();
-      console.log("Данные о пользователе:", data);
 
       for (const id of data.referrals || []) {
         const refRes = await fetch(`${api}/user/${id}`);
@@ -140,14 +139,14 @@
         row.style.marginBottom = '10px';
 
         const avatar = document.createElement('img');
-        avatar.src = refUser.avatar;
+        avatar.src = refUser.avatar || "https://via.placeholder.com/36";
         avatar.style.width = '36px';
         avatar.style.height = '36px';
         avatar.style.borderRadius = '50%';
         avatar.style.marginRight = '10px';
 
         const username = document.createElement('span');
-        username.textContent = `@${refUser.username}`;
+        username.textContent = `@${refUser.username || "Без ника"}`;
 
         row.appendChild(avatar);
         row.appendChild(username);
@@ -167,7 +166,7 @@
       Telegram.WebApp.openTelegramLink(`https://t.me/share/url?url=${message}`);
     }
 
-    register();
+    register().then(getBalance);
   </script>
 
 </body>
