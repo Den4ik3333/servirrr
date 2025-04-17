@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Снюс Тапалка</title>
+  <style>
+    :root { --accent: #00c47c; }
+    body {
+      margin: 0; padding: 0;
+      background: #0f0f0f; color: white;
+      font-family: 'Arial', sans-serif;
+      display: flex; flex-direction: column;
+      align-items: center; height: 100vh;
+    }
+    .balance {
+      display: flex; align-items: center;
+      justify-content: center; margin-top: 20px;
+      font-size: 1.4em; background: #1d1d1d;
+      padding: 10px 20px; border-radius: 30px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.3);
+    }
+    .balance img {
+      width: 28px; height: 28px; margin-left: 10px;
+      animation: sway 1.2s ease-in-out infinite;
+      transform-origin: center;
+    }
+    @keyframes sway {
+      0% { transform: rotate(0deg); }
+      25% { transform: rotate(5deg); }
+      50% { transform: rotate(0deg); }
+      75% { transform: rotate(-5deg); }
+      100% { transform: rotate(0deg); }
+    }
+    .shaker {
+      width: 220px; height: 220px; margin-top: 40px;
+      background-image: url('snus-can.png');
+      background-size: cover; background-position: center;
+      border-radius: 50%; box-shadow: 0 0 25px rgba(0,0,0,0.6);
+      cursor: pointer; transition: transform 0.1s;
+    }
+    .shaker:active { transform: scale(0.95); }
+    .menu {
+      margin-top: auto; margin-bottom: 40px;
+      display: flex; gap: 20px;
+    }
+    .btn {
+      background: #1d1d1d; color: white;
+      border: none; padding: 12px 18px;
+      border-radius: 16px; font-size: 1em;
+      cursor: pointer; box-shadow: 0 0 8px rgba(0,0,0,0.3);
+      transition: background 0.2s;
+    }
+    .btn:hover { background: #2c2c2c; }
+  </style>
+</head>
+<body>
+
+  <div class="balance">
+    <span>Снюсинок: <span id="count">0</span></span>
+    <img src="snus-pack.png" alt="Снюсинка">
+  </div>
+
+  <div class="shaker" onclick="tapSnus()"></div>
+
+  <div class="menu">
+    <button class="btn" onclick="alert('Задания скоро!')">📋 Задания</button>
+    <button class="btn" onclick="showReferrals()">👥 Рефералы</button>
+  </div>
+
+  <!-- Модалка -->
+  <div id="refModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:#000a; backdrop-filter:blur(3px); align-items:center; justify-content:center; z-index:999;">
+    <div style="background:#1d1d1d; border-radius:20px; padding:20px; width:90%; max-width:400px; color:white;">
+      <h2 style="margin-top:0;">👥 Ваши рефералы</h2>
+      <div id="refList" style="max-height:200px; overflow-y:auto; margin-bottom:15px;">
+        <!-- Список рефералов -->
+      </div>
+      <button class="btn" onclick="invite()">📨 Пригласить</button>
+      <button class="btn" onclick="closeModal()" style="margin-left:10px; background:#333;">Закрыть</button>
+    </div>
+  </div>
+
+  <script>
+    const api = 'https://servirrr.onrender.com'; // замени на свой сервер!
+    const tg = window.Telegram.WebApp.initDataUnsafe;
+    const ref = new URLSearchParams(location.search).get("start");
+
+    const userId = tg?.user?.id;
+    let count = 0;
+
+    async function register() {
+      if (!userId) return;
+      await fetch(`${api}/auth`, {
+        method: 'POST',
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id: userId,
+          username: tg.user.username,
+          avatar: tg.user.photo_url,
+          ref: ref ? parseInt(ref) : null
+        })
+      });
+    }
+
+    async function tapSnus() {
+      count++;
+      document.getElementById("count").textContent = count;
+      await fetch(`${api}/update-balance`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: userId, delta: 1 })
+      });
+    }
+
+    async function showReferrals() {
+      const modal = document.getElementById("refModal");
+      const list = document.getElementById("refList");
+      list.innerHTML = '';
+
+      const res = await fetch(`${api}/user/${userId}`);
+      const data = await res.json();
+
+      for (const id of data.referrals || []) {
+        const refRes = await fetch(`${api}/user/${id}`);
+        const refUser = await refRes.json();
+
+        const row = document.createElement('div');
+        row.style.display = 'flex';
+        row.style.alignItems = 'center';
+        row.style.marginBottom = '10px';
+
+        const avatar = document.createElement('img');
+        avatar.src = refUser.avatar;
+        avatar.style.width = '36px';
+        avatar.style.height = '36px';
+        avatar.style.borderRadius = '50%';
+        avatar.style.marginRight = '10px';
+
+        const username = document.createElement('span');
+        username.textContent = `@${refUser.username}`;
+
+        row.appendChild(avatar);
+        row.appendChild(username);
+        list.appendChild(row);
+      }
+
+      modal.style.display = 'flex';
+    }
+
+    function closeModal() {
+      document.getElementById('refModal').style.display = 'none';
+    }
+
+    function invite() {
+      const link = `https://t.me/snus_tap_bot?start=${userId}`;
+      const message = encodeURIComponent(`🔥 Заходи в Telegram Mini App, тапай снюсинки и прокачивай шайбу вместе со мной! ${link}`);
+      Telegram.WebApp.openTelegramLink(`https://t.me/share/url?url=${message}`);
+    }
+
+    register();
+  </script>
+
+</body>
+</html>
